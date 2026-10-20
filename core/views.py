@@ -1,9 +1,11 @@
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import connection
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib import messages
+from django.core.paginator import Paginator
 from .models import Servicio
 from .forms import ServicioForm
 
@@ -21,11 +23,26 @@ def inicio(request):
 def servicios(request):
     lista_servicios = Servicio.objects.filter(
         propietario=request.user
-    )
+    ).order_by('-creado_en', '-id')
+
+    query = request.GET.get('q', '').strip()
+
+    if query:
+        lista_servicios = lista_servicios.filter(
+            titulo__icontains=query
+        )
+
+    paginator = Paginator(lista_servicios, 5)
+    numero_pagina = request.GET.get('page')
+    pagina = paginator.get_page(numero_pagina)
+
     return render(
         request,
         'core/servicios.html',
-        {'servicios': lista_servicios}
+        {
+            'servicios': pagina,
+            'query': query,
+        }
     )
 
 
@@ -118,7 +135,7 @@ def iniciar_sesion(request):
             )
             return redirect('servicios')
     else:
-        form = AuthenticationForm(request)
+        form = AuthenticationForm()
 
     return render(request, 'core/login.html', {'form': form})
 
